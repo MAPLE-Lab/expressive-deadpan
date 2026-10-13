@@ -26,11 +26,10 @@ Pitch height (`pitchHeight`) summarizes the average pitch level of 8-measure exc
 Mode (`mode`) is simply the declared major or minor mode of an excerpt and is encoded based on the title/key signature of the prelude.
 RMS (`rms`) (calculated with Audacity) measures the average intensity in decibels. Deadpan excerpts are matched in average RMS with the original recordings using the RMS Normalize plug-in for Audacity.
 
-`extracted-features.csv` is a dataset of features extracted from the prepared audio files, extracted using librosa and music21 Python libraries, and the mirtoolbox Matlab library. This set of MIR features was calculated for broader use in the Emotional Piano Project. These features are estimated directly from the audio, using the duration of audio excerpts excluding the final two seconds (to account for fadeout). The functions are calculated using default parameters (see the Librosa documentation for additional details). Mean, median, and standard deviation of the following Librosa features are summarized (where applicable): spectral centroid, zero-crossing rate, high-frequency energy (estimated manually from STFT coefficients),  RMS, tempo, and onset strength.
-From MIRToolbox, we calculated high-frequency energy (`brightness_mean`) using a 3000Hz cut-off for consistency with Quinto & Thompson's (2013) study. 
-We extracted the ambitus (i.e., pitch range) from MIDI files using music21.
+`extracted-features.csv` is a dataset of features extracted from the prepared audio files, extracted using librosa and music21 Python libraries, and the mirtoolbox Matlab library. These features are estimated directly from the audio, using the duration of audio excerpts excluding the final two seconds (to account for fadeout). 
+- `rms_std`: standard deviation of RMS amplitude calculated in Librosa. 
+- `brightness_mean`: high-frequency energy using a 3000Hz cut-off for consistency with Quinto & Thompson's (2013) study, calculated with MIRToolbox.
+- `ambitus_range`: Ambitus calculated from MIDI corresponding 8-measure MIDI excerpts in music21.
 
-
-From this larger set of features, the QJEP manuscript considers attack rate (`arPerf`), pitch height (`pitchHeight`), mode (`mode`), and intensity (`rms`) from `equated-features.csv`, and intensity variability (`rms_std`; Librosa feature), pitch range (`ambitus_range`; music21 feature), and high-frequency energy  (`brightness_mean`; mirtoolbox feature) from `extracted-features.csv`.
 
 

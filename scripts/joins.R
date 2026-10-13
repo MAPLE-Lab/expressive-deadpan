@@ -42,7 +42,7 @@ df_extracted_features$summary <- paste0(
 
 df_extracted_features <- dplyr::select(
   df_extracted_features,
-  -c("X", "chroma", "mode", "stat_name", "variable", "performer")
+  -c("chroma", "mode", "stat_name", "variable", "performer")
 )
 
 # convert to wide format
