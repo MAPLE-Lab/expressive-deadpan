@@ -8,6 +8,14 @@ matrix_scatter <- rbind(c(1, 2, 3, 6, 6),
                         c(4, 5, NA, 6, 6),
                         c(7, 7, 7, 7, 7))
 
+matrix_scatter_2 <- rbind(c(1, 2, 3, 7, 7),
+                          c(1, 2, 3, 7, 7),
+                          c(1, 2, 3, 7, 7),
+                          c(4, 5, 6, 7, 7),
+                          c(4, 5, 6, 7, 7),
+                          c(4, 5, 6, 7, 7),
+                          c(8, 8, 8, 8, 8))
+
 # custom legend for expressive vs. deadpan conditions
 
 legend_edp <- ggpubr::get_legend(

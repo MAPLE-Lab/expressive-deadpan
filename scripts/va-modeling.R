@@ -9,12 +9,37 @@ predictors <- c(
   'rms', 'rms_std', 'brightness_mean', 'ambitus_range'
 )
 
+
 df_valence <- df_full |> dplyr::select(
   valence,
   dplyr::any_of(predictors), 
   condition
 )
+
 df_arousal <- df_full |> dplyr::select(
+  arousal,
+  dplyr::any_of(predictors), 
+  condition
+)
+
+
+# Prepare scaled versions -----------------------------------------
+
+# predictors[-1] excludes mode
+df_full_scaled <- df_full |> dplyr::mutate(
+  dplyr::across(
+    c(predictors[-1], 'valence', 'arousal'),
+    scale
+  )
+)
+
+df_valence_scaled <- df_full_scaled |> dplyr::select(
+  valence,
+  dplyr::any_of(predictors), 
+  condition
+)
+
+df_arousal_scaled <- df_full_scaled |> dplyr::select(
   arousal,
   dplyr::any_of(predictors), 
   condition
@@ -67,33 +92,42 @@ set.seed(123)
 
 en_valence_dp <- elastic_selection(
   valence ~ . - condition, 
-  subset(df_valence, condition == "deadpan"), 
+  subset(df_valence_scaled, condition == "deadpan"), 
   alpha = 0.5,
   seed = 123
 )
 
+# get mse
+en_valence_dp$cvm[which(en_valence_dp$lambda == en_valence_dp$lambda.1se)]
+
 en_valence_ex <- elastic_selection(
   valence ~ . - condition, 
-  subset(df_valence, condition == "expressive"), 
+  subset(df_valence_scaled, condition == "expressive"), 
   alpha = 0.5,
   seed = 123
 )
+en_valence_ex$cvm[which(en_valence_ex$lambda == en_valence_ex$lambda.1se)]
 
 # fit arousal model (all ratings)
 
 en_arousal_dp <- elastic_selection(
   arousal ~ . - condition, 
-  subset(df_arousal, condition == "deadpan"), 
+  subset(df_arousal_scaled, condition == "deadpan"), 
   alpha = 0.5,
   seed = 123
 )
+en_arousal_dp$cvm[which(en_arousal_dp$lambda == en_arousal_dp$lambda.1se)]
+
 
 en_arousal_ex <- elastic_selection(
   arousal ~ . - condition, 
-  subset(df_arousal, condition == "expressive"), 
+  subset(df_arousal_scaled, condition == "expressive"), 
   alpha = 0.5,
   seed = 123
 )
+en_arousal_ex$cvm[which(en_arousal_ex$lambda == en_arousal_ex$lambda.1se)]
+
+
 var_imp_val_dp <- get_var_imp(en_valence_dp)
 var_imp_val_ex <- get_var_imp(en_valence_ex)
 var_imp_val_dp$dim <- var_imp_val_ex$dim <- "Valence - Ratings"
@@ -140,7 +174,7 @@ var_imp_conditions$var <- dplyr::case_match(
 
 var_imp_conditions$var <- factor(
   var_imp_conditions$var,
-  levels = 
+  levels =
     rev(c(
       "Mode",
       "Attack Rate",
@@ -174,7 +208,33 @@ df_arousal$pieceID <- df_full$pieceID
 df_valence$composer <- df_full$composer
 df_valence$pieceID <- df_full$pieceID
 
-df_arousal_plot <- df_arousal |> 
+
+# version of data with only predictors standardized for plotting
+df_full_scaled_2 <- df_full |> dplyr::mutate(
+  dplyr::across(
+    c(predictors[-1]),
+    scale
+  )
+)
+
+df_valence_scaled_2 <- df_full_scaled_2 |> dplyr::select(
+  valence,
+  dplyr::any_of(predictors), 
+  condition
+)
+
+df_arousal_scaled_2 <- df_full_scaled_2 |> dplyr::select(
+  arousal,
+  dplyr::any_of(predictors), 
+  condition
+)
+
+df_arousal_scaled_2$composer <- df_full_scaled_2$composer
+df_arousal_scaled_2$pieceID <- df_full_scaled_2$pieceID
+df_valence_scaled_2$composer <- df_full_scaled_2$composer
+df_valence_scaled_2$pieceID <- df_full_scaled_2$pieceID
+
+df_arousal_plot <- df_arousal_scaled_2 |> 
   dplyr::group_by(
     condition,
     composer, 
@@ -192,7 +252,7 @@ df_arousal_plot <- df_arousal |>
   )
 
 
-df_valence_plot <- df_valence |> 
+df_valence_plot <- df_valence_scaled_2 |> 
   dplyr::group_by(
     condition,
     composer, 
@@ -217,14 +277,13 @@ plots_arousal <- gridExtra::grid.arrange(
     x = df_arousal_plot$arPerf,
     legend.position = 'none'
   )+
+    ggplot2::theme(axis.title.x = ggplot2::element_text(size = 9))+
     ggplot2::labs(
       x = "Attack Rate", 
       y = "Arousal"
     )+
-    ggplot2::ylim(
-      1,
-      100
-    ),
+    ggplot2::ylim(1,100)#+
+    ,
   plot_scatter(
     df_arousal_plot,
     y = df_arousal_plot$arousal,
@@ -232,10 +291,12 @@ plots_arousal <- gridExtra::grid.arrange(
     legend.position = 'none',
     axis.text.y = ggplot2::element_blank()
   )+
+    ggplot2::theme(axis.title.x = ggplot2::element_text(size = 9))+
     ggplot2::labs(
       x = "Pitch Height"
     )+
-    ggplot2::ylim(1,100),
+    ggplot2::ylim(1,100)#+
+    ,
   # plot_scatter(
   #   df_arousal_plot, 
   #   y = df_arousal_plot$arousal,
@@ -254,24 +315,25 @@ plots_arousal <- gridExtra::grid.arrange(
     legend.position = 'none',
     axis.text.y = ggplot2::element_blank()
   ) +
+    ggplot2::theme(axis.title.x = ggplot2::element_text(size = 9))+
     ggplot2::labs(
-      x="Intensity"
+      x="Intensity (dB)"
     ) +
-    ggplot2::ylim(
-      1,
-      100
-    ),
+    ggplot2::ylim(1,100)#+
+  ,
   plot_scatter(
     df_arousal_plot, 
     y = df_arousal_plot$arousal,
     x = df_arousal_plot$rms_std,
     legend.position = 'none'
   )+
+    ggplot2::theme(axis.title.x = ggplot2::element_text(size = 9))+
     ggplot2::labs(
-      x = "Intensity\nVariability",
+      x = "Intensity Variability",
       y = "Arousal"
     )+
-    ggplot2::ylim(1,100),
+    ggplot2::ylim(1,100)#+
+  ,
  plot_scatter(
    df_arousal_plot, 
    y = df_arousal_plot$arousal,
@@ -279,10 +341,12 @@ plots_arousal <- gridExtra::grid.arrange(
    legend.position = 'none',
    axis.text.y = ggplot2::element_blank()
  )+
+  ggplot2::theme(axis.title.x = ggplot2::element_text(size = 9))+
    ggplot2::labs(
-     x = "High Freq.\nEnergy"
+     x = "High Freq. Energy"
    )+
-   ggplot2::ylim(1,100),
+   ggplot2::ylim(1,100)#+
+  ,
   plot_imp_arousal_conditions,
  legend_edp,
   layout_matrix = matrix_scatter
@@ -312,12 +376,10 @@ plots_valence <- gridExtra::grid.arrange(
     ggplot2::labs(
       x = "Mode", 
       y = "Valence"
-    )+
-    ggplot2::ylim(
-      1,
-      7
-    )+
-    ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7),
+    )+  
+    ggplot2::ylim(1,7)+
+   ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7)
+  ,
   plot_scatter(
     df_valence_plot, 
     y = df_valence_plot$valence,
@@ -325,14 +387,13 @@ plots_valence <- gridExtra::grid.arrange(
     legend.position = 'none',
     axis.text.y = ggplot2::element_blank()
   )+
+    ggplot2::theme(axis.title.x = ggplot2::element_text(size = 9))+
     ggplot2::labs(
       x = "Attack Rate"
     )+
-    ggplot2::ylim(
-      1,
-      7
-    )+
-    ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7),
+    ggplot2::ylim(1,7)+
+   ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7)
+  ,
   plot_scatter(
     df_valence_plot, 
     y = df_valence_plot$valence,
@@ -340,14 +401,31 @@ plots_valence <- gridExtra::grid.arrange(
     legend.position = 'none',
     axis.text.y = ggplot2::element_blank()
   ) +
+    
+    ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7)+
+    ggplot2::theme(axis.title.x = ggplot2::element_text(size = 9))+
     ggplot2::labs(
-      x = "Pitch Height"
-    )+
-    ggplot2::ylim(
-      1,
-      7
-    )+
-    ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7),
+      x = "Pitch Height",
+      y = ''
+    ),#+
+  plot_scatter(
+    df_valence_plot, 
+    y = df_valence_plot$valence,
+    x = df_valence_plot$ambitus_range,
+    legend.position = 'none'
+  ) +
+  ggplot2::ylim(1,7)+
+  ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7)+
+    ggplot2::theme(axis.title.x = ggplot2::element_text(size = 9))+
+    ggplot2::labs(
+      x = "Pitch\nRange",
+      y = "Valence"
+    )#,
+  +
+  ggplot2::ylim(1,7)+
+  ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7)
+  ,
+  #  ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7)
   # plot_scatter(
   #   df_valence_plot, 
   #   y = df_valence_plot$valence,
@@ -366,18 +444,17 @@ plots_valence <- gridExtra::grid.arrange(
     df_valence_plot, 
     y = df_valence_plot$valence,
     x = df_valence_plot$rms_std,
+    axis.text.y = ggplot2::element_blank(),
     legend.position = 'none',
     #axis.text.y = ggplot2::element_blank()
   ) +
+    ggplot2::theme(axis.title.x = ggplot2::element_text(size = 9))+
     ggplot2::labs(
-      x = "Intensity\nVariability",
-      y = "Valence"
+      x = "Intensity\nVariability (Librosa)"
     )+
-    ggplot2::ylim(
-      1,
-      7
-    )+
-    ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7),
+    ggplot2::ylim(1,7)+
+    ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7)
+  ,
   plot_scatter(
     df_valence_plot, 
     y = df_valence_plot$valence,
@@ -385,17 +462,16 @@ plots_valence <- gridExtra::grid.arrange(
     legend.position = 'none',
     axis.text.y = ggplot2::element_blank()
   ) +
+    ggplot2::theme(axis.title.x = ggplot2::element_text(size = 9))+
     ggplot2::labs(
       x = "High Freq.\nEnergy"
     )+
-    ggplot2::ylim(
-      1,
-      7
-    )+
-  ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7),
+   ggplot2::ylim(1,7)+
+  ggplot2::scale_y_continuous(limits = c(1,7), breaks = 1:7)
+  ,
   plot_imp_valence_conditions,
   legend_edp,
- layout_matrix = matrix_scatter
+ layout_matrix = matrix_scatter_2
 )
 
 fig3 <- ggpubr::ggarrange(
@@ -435,7 +511,7 @@ ggplot2::ggsave(
   fig3,
   filename = paste0(
     here::here(), 
-    '/img/fig3.tiff'
+    '/img/fig3st-original-units.tiff'
   ), 
   width = 7.5, 
   height = 4.5,
@@ -445,7 +521,7 @@ ggplot2::ggsave(
   fig4,
   filename = paste0(
     here::here(), 
-    '/img/fig4.tiff'
+    '/img/fig4st-original-units.tiff'
   ), 
   width = 7.5, 
   height = 4.5,
